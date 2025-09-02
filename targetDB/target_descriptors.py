@@ -14,7 +14,6 @@ if platform == 'darwin':
 import matplotlib.pyplot as plt
 from operator import itemgetter
 
-from utils import targetDB_gui as tgui
 
 
 def norm_min_max(df, df_min=0.0, df_max=1.0):
@@ -74,6 +73,7 @@ class target_scores:
 
     def get_mpo_score(self):
         if self.mode == 'list':
+            from utils import targetDB_gui as tgui
             values = tgui.get_mpo_coeff_gui()
             coeff_df = values.coeff
             self.coeff = coeff_df

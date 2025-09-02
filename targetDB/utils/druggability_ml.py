@@ -2,7 +2,6 @@
 
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-import pkg_resources
 from pathlib import Path
 
 
@@ -13,9 +12,8 @@ def generate_model():
 
     # recover the training data from the data file
 
-    pck_path = Path(str(pkg_resources.resource_filename('utils', ''))).parent
-    ml_data = pck_path.joinpath('ml_data')
-    ml_data = ml_data.joinpath('ml_training_data_13_01_2020.zip')
+    utils_path = Path(__file__).resolve().parent
+    ml_data = utils_path / 'ml_data' / 'ml_training_data_13_01_2020.zip'
 
     training_df = pd.read_json(ml_data, compression='zip')
 
@@ -55,9 +53,8 @@ def predict_prob(model, data):
 
 def in_training_set(data):
 
-    pck_path = Path(str(pkg_resources.resource_filename('utils', ''))).parent
-    ml_data = pck_path.joinpath('ml_data')
-    ml_data = ml_data.joinpath('ml_training_data_13_01_2020.zip')
+    utils_path = Path(__file__).resolve().parent
+    ml_data = utils_path / 'ml_data' / 'ml_training_data_13_01_2020.zip'
 
     training_df = pd.read_json(ml_data, compression='zip')
 
