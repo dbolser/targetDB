@@ -13,6 +13,11 @@ import argparse
 import os
 import sqlite3
 from concurrent.futures import ProcessPoolExecutor
+import warnings
+
+# Suppress pandas warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+os.environ['PYTHONWARNINGS'] = 'ignore::FutureWarning'
 
 import numpy as np
 import pandas as pd

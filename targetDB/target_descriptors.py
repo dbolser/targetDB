@@ -3,6 +3,12 @@ import pandas as pd
 import numpy as np
 import io, sqlite3, math
 import scipy.stats as sc
+import warnings
+
+# Suppress all pandas FutureWarnings 
+warnings.filterwarnings('ignore', category=FutureWarning)
+import os
+os.environ['PYTHONWARNINGS'] = 'ignore::FutureWarning'
 # start fix for macOS - as per psterk comment on github
 from sys import platform
 

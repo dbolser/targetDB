@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
+
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
@@ -13,7 +16,7 @@ def generate_model():
     # recover the training data from the data file
 
     utils_path = Path(__file__).resolve().parent
-    ml_data = utils_path / 'ml_data' / 'ml_training_data_13_01_2020.zip'
+    ml_data = utils_path.parent / 'ml_data' / 'ml_training_data_13_01_2020.zip'
 
     training_df = pd.read_json(ml_data, compression='zip')
 
@@ -54,7 +57,7 @@ def predict_prob(model, data):
 def in_training_set(data):
 
     utils_path = Path(__file__).resolve().parent
-    ml_data = utils_path / 'ml_data' / 'ml_training_data_13_01_2020.zip'
+    ml_data = utils_path.parent / 'ml_data' / 'ml_training_data_13_01_2020.zip'
 
     training_df = pd.read_json(ml_data, compression='zip')
 
