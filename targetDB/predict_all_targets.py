@@ -10,16 +10,47 @@ directly from the database.
 """
 
 import argparse
+import os
 import sqlite3
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 import target_descriptors as td
 from utils import druggability_ml as dml
 
 
-def run_predictions(db_path: str) -> pd.DataFrame:
+_MODEL = None
+_DB_PATH = None
+
+
+def _init_worker(db_path: str):
+    """Initialise global model and database path for worker processes."""
+    global _MODEL, _DB_PATH
+    _MODEL = dml.generate_model()
+    _DB_PATH = db_path
+
+
+def _predict_one(target_id: str) -> pd.DataFrame:
+    """Calculate scores for a single target identifier."""
+    data = td.get_descriptors_list(target_id, targetdb=_DB_PATH)
+    tscore = td.target_scores(data, mode='programmatic')
+    proba = pd.DataFrame(dml.predict_prob(_MODEL, tscore.score_components),
+                         columns=_MODEL.classes_)
+    tscore.scores['Tractability_probability'] = (proba[1] * 100).round(2)
+    tscore.scores['Tractable'] = np.where(
+        tscore.scores['Tractability_probability'] >= 60,
+        'Tractable',
+        np.where(tscore.scores['Tractability_probability'] >= 40,
+                 'Challenging', 'Intractable')
+    )
+    tscore.scores['In_training_set'] = dml.in_training_set(tscore.score_components)
+    return tscore.scores
+
+
+def run_predictions(db_path: str, workers: int = None) -> pd.DataFrame:
     """Compute tractability predictions for all targets.
 
     Parameters
@@ -40,29 +71,16 @@ def run_predictions(db_path: str) -> pd.DataFrame:
     finally:
         conn.close()
 
-    # Retrieve descriptors for all targets. ``get_descriptors_list``
-    # expects a comma-separated string of quoted identifiers.
-    id_str = "','".join(ids["Target_id"].astype(str))
-    data = td.get_descriptors_list(id_str, targetdb=db_path)
+    workers = workers or os.cpu_count() or 1
+    with ProcessPoolExecutor(max_workers=workers,
+                             initializer=_init_worker,
+                             initargs=(db_path,)) as pool:
+        results = list(tqdm(pool.map(_predict_one, ids['Target_id'].astype(str)),
+                            total=len(ids),
+                            desc='Scoring targets'))
 
-    # Generate scores and apply the machine-learning model
-    # Use a non-interactive mode to avoid GUI prompts when calculating
-    # the multi-parameter optimization (MPO) score.
-    tscore = td.target_scores(data, mode='programmatic')
-    model = dml.generate_model()
-    proba = pd.DataFrame(dml.predict_prob(model, tscore.score_components),
-                         columns=model.classes_)
-    tscore.scores['Tractability_probability'] = (proba[1] * 100).round(2)
-    tscore.scores['Tractable'] = np.where(
-        tscore.scores['Tractability_probability'] >= 60,
-        'Tractable',
-        np.where(tscore.scores['Tractability_probability'] >= 40,
-                 'Challenging', 'Intractable')
-    )
-    tscore.scores['In_training_set'] = dml.in_training_set(tscore.score_components)
-
-    # Merge gene names for readability
-    result = ids.merge(tscore.scores, on='Target_id', how='left')
+    scores = pd.concat(results, ignore_index=True)
+    result = ids.merge(scores, on='Target_id', how='left')
     return result
 
 
@@ -72,9 +90,11 @@ def main() -> None:
     )
     parser.add_argument('database', help='Path to TargetDB SQLite database')
     parser.add_argument('output', help='Path to output CSV file')
+    parser.add_argument('-w', '--workers', type=int,
+                        help='Number of worker processes (default: CPU count)')
     args = parser.parse_args()
 
-    predictions = run_predictions(args.database)
+    predictions = run_predictions(args.database, workers=args.workers)
     predictions.to_csv(args.output, index=False)
 
 
