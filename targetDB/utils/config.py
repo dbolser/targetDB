@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
 import re
-from tkinter.filedialog import askopenfilename,askdirectory
-from tkinter.simpledialog import askstring
+try:
+    from tkinter.filedialog import askopenfilename,askdirectory
+    from tkinter.simpledialog import askstring
+except ImportError:
+    # Stubs for headless environments
+    def askopenfilename(**kwargs): return ""
+    def askdirectory(**kwargs): return ""
+    def askstring(*args, **kwargs): return ""
 from pathlib import Path
 
 
@@ -112,7 +118,7 @@ def get_config_from_user(config, todo=None, new=False):
 		while not path_exist:
 			print('========================================================')
 			print('========= DATABASE WORKING FILES OUTPUT  ===============')
-			print('=====/!\ WARNING A LOT OF SPACE CAN BE REQUIRED /!\=====')
+			print('=====/!\\ WARNING A LOT OF SPACE CAN BE REQUIRED /!\\=====')
 			print('========================================================\n')
 			db_output = Path(askdirectory(title='Select directory to save working database files (large files)'))
 			if db_output.is_dir():
@@ -139,7 +145,7 @@ def get_config_from_user(config, todo=None, new=False):
 
 
 def is_email(email):
-	match = re.match('^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$', email)
+	match = re.match(r'^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$', email)
 	if match is None:
 		return False
 	return True
