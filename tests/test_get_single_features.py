@@ -1,10 +1,10 @@
 import os
 import sqlite3
-import pandas as pd
 import pytest
 
 # Ensure package modules are importable when tests are executed from the tests directory
 import sys
+
 PACKAGE_ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(PACKAGE_ROOT)
 sys.path.append(os.path.join(PACKAGE_ROOT, "targetDB"))
@@ -12,9 +12,9 @@ from targetDB import target_features
 
 
 def build_test_db():
-    conn = sqlite3.connect(':memory:')
+    conn = sqlite3.connect(":memory:")
     cur = conn.cursor()
-    cur.executescript('''
+    cur.executescript("""
         CREATE TABLE Targets (Target_id TEXT PRIMARY KEY, Gene_name TEXT);
         INSERT INTO Targets VALUES ('T1','GENE1');
 
@@ -135,61 +135,61 @@ def build_test_db():
 
         CREATE TABLE opentarget_association (target_id TEXT, association_score REAL);
         INSERT INTO opentarget_association VALUES ('T1',0.1);
-    ''')
+    """)
     conn.commit()
     return conn
 
 
 def test_get_single_features(monkeypatch):
     conn = build_test_db()
-    monkeypatch.setattr(target_features.sqlite3, 'connect', lambda _: conn)
+    monkeypatch.setattr(target_features.sqlite3, "connect", lambda _: conn)
 
-    results = target_features.get_single_features('T1', dbase=':memory:')
+    results = target_features.get_single_features("T1", dbase=":memory:")
 
-    assert list(results['general_info'].columns) == ['Target_id','Gene_name']
-    assert results['general_info'].iloc[0]['Gene_name'] == 'GENE1'
+    assert list(results["general_info"].columns) == ["Target_id", "Gene_name"]
+    assert results["general_info"].iloc[0]["Gene_name"] == "GENE1"
 
-    assert list(results['disease'].columns) == ['disease_name','disease_id']
-    assert results['disease'].iloc[0]['disease_name'] == 'DiseaseX'
+    assert list(results["disease"].columns) == ["disease_name", "disease_id"]
+    assert results["disease"].iloc[0]["disease_name"] == "DiseaseX"
 
-    assert results['reactome'].iloc[0]['pathway_name'] == 'ReactomePath'
-    assert results['kegg'].iloc[0]['pathway_name'] == 'KEGGPath'
+    assert results["reactome"].iloc[0]["pathway_name"] == "ReactomePath"
+    assert results["kegg"].iloc[0]["pathway_name"] == "KEGGPath"
 
-    assert results['disease_exp'].iloc[0]['disease'] == 'DiseaseX'
-    assert pytest.approx(results['disease_exp'].iloc[0]['t_stat']) == 2.0
+    assert results["disease_exp"].iloc[0]["disease"] == "DiseaseX"
+    assert pytest.approx(results["disease_exp"].iloc[0]["t_stat"]) == 2.0
 
-    assert results['gwas'].iloc[0]['phenotype'] == 'Phen1'
+    assert results["gwas"].iloc[0]["phenotype"] == "Phen1"
 
-    assert results['tissue'].iloc[0]['Tissue'] == 'Liver'
+    assert results["tissue"].iloc[0]["Tissue"] == "Liver"
 
-    assert results['selectivity'].iloc[0]['Selectivity_entropy'] == 0.5
+    assert results["selectivity"].iloc[0]["Selectivity_entropy"] == 0.5
 
-    assert results['organ_expression'].iloc[0]['organ_name'] == 'Organ1'
+    assert results["organ_expression"].iloc[0]["organ_name"] == "Organ1"
 
-    assert results['tissue_expression'].iloc[0]['tissue'] == 'Tissue1'
+    assert results["tissue_expression"].iloc[0]["tissue"] == "Tissue1"
 
-    assert results['phenotype'].iloc[0]['zygosity'] == 'HET'
+    assert results["phenotype"].iloc[0]["zygosity"] == "HET"
 
-    assert results['isoforms'].iloc[0]['isoform_name'] == 'GENE1-1'
+    assert results["isoforms"].iloc[0]["isoform_name"] == "GENE1-1"
 
-    assert results['isoforms_mod'].iloc[0]['modification_type'] == 'del'
-    assert results['var'].iloc[0]['modification_type'] == 'sub'
-    assert results['mut'].iloc[0]['modification_type'] == 'add'
+    assert results["isoforms_mod"].iloc[0]["modification_type"] == "del"
+    assert results["var"].iloc[0]["modification_type"] == "sub"
+    assert results["mut"].iloc[0]["modification_type"] == "add"
 
-    assert results['domains'].iloc[0]['Domain_name'] == 'Domain1'
+    assert results["domains"].iloc[0]["Domain_name"] == "Domain1"
 
-    assert results['pdb_blast'].iloc[0]['PDB_code'] == 'PDB1'
-    assert results['pdb'].iloc[0]['PDB_code'] == 'PDB1'
+    assert results["pdb_blast"].iloc[0]["PDB_code"] == "PDB1"
+    assert results["pdb"].iloc[0]["PDB_code"] == "PDB1"
 
-    assert results['pockets'].iloc[0]['pocket_number'] == 1
-    assert results['alt_pockets'].iloc[0]['pocket_number'] == 2
+    assert results["pockets"].iloc[0]["pocket_number"] == 1
+    assert results["alt_pockets"].iloc[0]["pocket_number"] == 2
 
-    assert results['bioactives'].iloc[0]['lig_id'] == 'L1'
+    assert results["bioactives"].iloc[0]["lig_id"] == "L1"
 
-    assert results['commercials'].iloc[0]['smiles'] == 'C'
+    assert results["commercials"].iloc[0]["smiles"] == "C"
 
-    assert results['bindingDB'].iloc[0]['ligand_name'] == 'LigandBD'
+    assert results["bindingDB"].iloc[0]["ligand_name"] == "LigandBD"
 
-    assert results['domain_drugE'].iloc[0]['domain_fold'] == 'fold1'
+    assert results["domain_drugE"].iloc[0]["domain_fold"] == "fold1"
 
-    assert results['open_target'].iloc[0]['association_score'] == 0.1
+    assert results["open_target"].iloc[0]["association_score"] == 0.1

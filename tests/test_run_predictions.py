@@ -1,6 +1,5 @@
 import sqlite3
 import pandas as pd
-import pytest
 
 import sys
 from pathlib import Path
@@ -15,7 +14,9 @@ def test_run_predictions_minimal_db(monkeypatch, tmp_path):
     db_path = tmp_path / "temp.db"
     conn = sqlite3.connect(db_path)
     conn.execute("CREATE TABLE Targets (Target_id TEXT, Gene_name TEXT)")
-    conn.execute("INSERT INTO Targets (Target_id, Gene_name) VALUES (?, ?)", ("T1", "GeneA"))
+    conn.execute(
+        "INSERT INTO Targets (Target_id, Gene_name) VALUES (?, ?)", ("T1", "GeneA")
+    )
     conn.commit()
     conn.close()
 
@@ -24,10 +25,13 @@ def test_run_predictions_minimal_db(monkeypatch, tmp_path):
         def __init__(self, max_workers=None, initializer=None, initargs=()):
             if initializer:
                 initializer(*initargs)
+
         def __enter__(self):
             return self
+
         def __exit__(self, exc_type, exc, tb):
             return False
+
         def map(self, func, iterable):
             for item in iterable:
                 yield func(item)

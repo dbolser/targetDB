@@ -21,7 +21,8 @@
 # (C) Dr. De Cesco Stephane - v3.2 - 22/03/2017							#
 # ----------------------------------------------------------------------#
 # -------------------------- MODULES IMPORT ----------------------------#
-import pandas as pd
+
+
 def monotonic_score(value, lower, upper):
     # =======================================================================================
     #         lower
@@ -40,7 +41,7 @@ def monotonic_score(value, lower, upper):
     upper = float(upper)
     lower = float(lower)
     v = value.copy()
-    v[value<= lower] = 1
+    v[value <= lower] = 1
     v[value >= upper] = 0
     v[(value > lower) & (value < upper)] = 1 - ((value - lower) * (1 / (upper - lower)))
 
@@ -68,18 +69,17 @@ def hump_score(value, low1, up1, up2, low2):
     v = value.copy()
     v[value <= low1] = 0
     v[value > low2] = 0
-    v[(up1 < value)&(value<= up2)] = 1
-    v[(low1 < value) & (value<= up1)]= ((value - low1) * (1 / (up1 - low1)))
-    v[(up2 < value) & (value<= low2)]= 1 - ((value - up2) * (1 / (low2 - up2)))
+    v[(up1 < value) & (value <= up2)] = 1
+    v[(low1 < value) & (value <= up1)] = (value - low1) * (1 / (up1 - low1))
+    v[(up2 < value) & (value <= low2)] = 1 - ((value - up2) * (1 / (low2 - up2)))
     return v
 
 
-def calc_mpo_score(bpka=None,logP=None,logD=None,MW=None,HBD=None,TPSA=None):
-    bpKa_score = monotonic_score(bpka, 8,10)
+def calc_mpo_score(bpka=None, logP=None, logD=None, MW=None, HBD=None, TPSA=None):
+    bpKa_score = monotonic_score(bpka, 8, 10)
     logP_score = monotonic_score(logP, 3, 5)
     logD_score = monotonic_score(logD, 2, 4)
     MW_score = monotonic_score(MW, 360, 500)
     HBD_score = monotonic_score(HBD, 0.5, 3.5)
     TPSA_score = hump_score(TPSA, 20, 40, 90, 120)
     return bpKa_score + logP_score + logD_score + MW_score + HBD_score + TPSA_score
-

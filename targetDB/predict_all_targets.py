@@ -16,8 +16,8 @@ from concurrent.futures import ProcessPoolExecutor
 import warnings
 
 # Suppress pandas warnings
-warnings.filterwarnings('ignore', category=FutureWarning)
-os.environ['PYTHONWARNINGS'] = 'ignore::FutureWarning'
+warnings.filterwarnings("ignore", category=FutureWarning)
+os.environ["PYTHONWARNINGS"] = "ignore::FutureWarning"
 
 import numpy as np
 import pandas as pd
@@ -41,17 +41,21 @@ def _init_worker(db_path: str):
 def _predict_one(target_id: str) -> pd.DataFrame:
     """Calculate scores for a single target identifier."""
     data = td.get_descriptors_list(target_id, targetdb=_DB_PATH)
-    tscore = td.target_scores(data, mode='programmatic')
-    proba = pd.DataFrame(dml.predict_prob(_MODEL, tscore.score_components),
-                         columns=_MODEL.classes_)
-    tscore.scores['Tractability_probability'] = (proba[1] * 100).round(2)
-    tscore.scores['Tractable'] = np.where(
-        tscore.scores['Tractability_probability'] >= 60,
-        'Tractable',
-        np.where(tscore.scores['Tractability_probability'] >= 40,
-                 'Challenging', 'Intractable')
+    tscore = td.target_scores(data, mode="programmatic")
+    proba = pd.DataFrame(
+        dml.predict_prob(_MODEL, tscore.score_components), columns=_MODEL.classes_
     )
-    tscore.scores['In_training_set'] = dml.in_training_set(tscore.score_components)
+    tscore.scores["Tractability_probability"] = (proba[1] * 100).round(2)
+    tscore.scores["Tractable"] = np.where(
+        tscore.scores["Tractability_probability"] >= 60,
+        "Tractable",
+        np.where(
+            tscore.scores["Tractability_probability"] >= 40,
+            "Challenging",
+            "Intractable",
+        ),
+    )
+    tscore.scores["In_training_set"] = dml.in_training_set(tscore.score_components)
     return tscore.scores
 
 
@@ -77,31 +81,39 @@ def run_predictions(db_path: str, workers: int = None) -> pd.DataFrame:
         conn.close()
 
     workers = workers or os.cpu_count() or 1
-    with ProcessPoolExecutor(max_workers=workers,
-                             initializer=_init_worker,
-                             initargs=(db_path,)) as pool:
-        results = list(tqdm(pool.map(_predict_one, ids['Target_id'].astype(str)),
-                            total=len(ids),
-                            desc='Scoring targets'))
+    with ProcessPoolExecutor(
+        max_workers=workers, initializer=_init_worker, initargs=(db_path,)
+    ) as pool:
+        results = list(
+            tqdm(
+                pool.map(_predict_one, ids["Target_id"].astype(str)),
+                total=len(ids),
+                desc="Scoring targets",
+            )
+        )
 
     scores = pd.concat(results, ignore_index=True)
-    result = ids.merge(scores, on='Target_id', how='left')
+    result = ids.merge(scores, on="Target_id", how="left")
     return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description='Run tractability predictions for all proteins in the database.'
+        description="Run tractability predictions for all proteins in the database."
     )
-    parser.add_argument('database', help='Path to TargetDB SQLite database')
-    parser.add_argument('output', help='Path to output CSV file')
-    parser.add_argument('-w', '--workers', type=int,
-                        help='Number of worker processes (default: CPU count)')
+    parser.add_argument("database", help="Path to TargetDB SQLite database")
+    parser.add_argument("output", help="Path to output CSV file")
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        help="Number of worker processes (default: CPU count)",
+    )
     args = parser.parse_args()
 
     predictions = run_predictions(args.database, workers=args.workers)
     predictions.to_csv(args.output, index=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
