@@ -7,7 +7,9 @@ from openpyxl import load_workbook
 def test_pubmed_search(monkeypatch, dr_module):
     dr = dr_module
     monkeypatch.setattr(dr.Entrez, "esearch", lambda **k: "es")
-    monkeypatch.setattr(dr.Entrez, "read", lambda h: {"Count": "1", "IdList": ["123456"]})
+    monkeypatch.setattr(
+        dr.Entrez, "read", lambda h: {"Count": "1", "IdList": ["123456"]}
+    )
     monkeypatch.setattr(dr.Entrez, "efetch", lambda **k: "ef")
     records = [
         {

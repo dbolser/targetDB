@@ -18,11 +18,11 @@ Functions:
 
 from __future__ import print_function
 
-#from Bio._py3k import _as_string
+# from Bio._py3k import _as_string
 
 
 class Record(object):
-	"""Holds information from a SwissProt record.
+    """Holds information from a SwissProt record.
 
     Attributes:
      - entry_name        Name of this entry, e.g. RL1_ECOLI.
@@ -74,39 +74,39 @@ class Record(object):
 
     """
 
-	def __init__(self):
-		"""Initialize the class."""
-		self.entry_name = None
-		self.data_class = None
-		self.molecule_type = None
-		self.sequence_length = None
+    def __init__(self):
+        """Initialize the class."""
+        self.entry_name = None
+        self.data_class = None
+        self.molecule_type = None
+        self.sequence_length = None
 
-		self.accessions = []
-		self.created = None
-		self.sequence_update = None
-		self.annotation_update = None
+        self.accessions = []
+        self.created = None
+        self.sequence_update = None
+        self.annotation_update = None
 
-		self.description = []
-		self.gene_name = ""
-		self.organism = []
-		self.organelle = ""
-		self.organism_classification = []
-		self.taxonomy_id = []
-		self.host_organism = []
-		self.host_taxonomy_id = []
-		self.references = []
-		self.comments = []
-		self.cross_references = []
-		self.keywords = []
-		self.features = []
-		self.protein_existence = ""
+        self.description = []
+        self.gene_name = ""
+        self.organism = []
+        self.organelle = ""
+        self.organism_classification = []
+        self.taxonomy_id = []
+        self.host_organism = []
+        self.host_taxonomy_id = []
+        self.references = []
+        self.comments = []
+        self.cross_references = []
+        self.keywords = []
+        self.features = []
+        self.protein_existence = ""
 
-		self.seqinfo = None
-		self.sequence = ""
+        self.seqinfo = None
+        self.sequence = ""
 
 
 class Reference(object):
-	"""Holds information from one reference in a SwissProt entry.
+    """Holds information from one reference in a SwissProt entry.
 
     Attributes:
      - number      Number of reference in an entry.
@@ -120,509 +120,511 @@ class Reference(object):
 
     """
 
-	def __init__(self):
-		"""Initialize the class."""
-		self.number = None
-		self.positions = []
-		self.comments = []
-		self.references = []
-		self.authors = []
-		self.title = []
-		self.location = []
+    def __init__(self):
+        """Initialize the class."""
+        self.number = None
+        self.positions = []
+        self.comments = []
+        self.references = []
+        self.authors = []
+        self.title = []
+        self.location = []
 
 
 def parse(handle):
-	"""Read multiple SwissProt records from file handle.
+    """Read multiple SwissProt records from file handle.
 
     Returns a generator object which yields Bio.SwissProt.Record() objects.
     """
-	while True:
-		record = _read(handle)
-		if not record:
-			return
-		yield record
+    while True:
+        record = _read(handle)
+        if not record:
+            return
+        yield record
 
 
 def read(handle):
-	"""Read one SwissProt record from file handle.
+    """Read one SwissProt record from file handle.
 
     Returns a Record() object.
     """
-	record = _read(handle)
-	if not record:
-		raise ValueError("No SwissProt record found")
-	# We should have reached the end of the record by now
-	# Used to check with handle.read() but that breaks on Python 3.5
-	# due to http://bugs.python.org/issue26499 and could download
-	# lot of data needlessly if there were more records.
-	remainder = handle.readline()
-	if remainder:
-		raise ValueError("More than one SwissProt record found")
-	return record
+    record = _read(handle)
+    if not record:
+        raise ValueError("No SwissProt record found")
+    # We should have reached the end of the record by now
+    # Used to check with handle.read() but that breaks on Python 3.5
+    # due to http://bugs.python.org/issue26499 and could download
+    # lot of data needlessly if there were more records.
+    remainder = handle.readline()
+    if remainder:
+        raise ValueError("More than one SwissProt record found")
+    return record
 
 
 # Everything below is considered private
 
 
 def _read(handle):
-	record = None
-	unread = ""
-	for line in handle:
-		# This is for Python 3 to cope with a binary handle (byte strings),
-		# or a text handle (unicode strings):
-		#line = _as_string(line)
-		line = str(line)
-		key, value = line[:2], line[5:].rstrip()
-		if unread:
-			value = unread + " " + value
-			unread = ""
-		if key == "**":
-			# See Bug 2353, some files from the EBI have extra lines
-			# starting "**" (two asterisks/stars).  They appear
-			# to be unofficial automated annotations. e.g.
-			# **
-			# **   #################    INTERNAL SECTION    ##################
-			# **HA SAM; Annotated by PicoHamap 1.88; MF_01138.1; 09-NOV-2003.
-			pass
-		elif key == "ID":
-			record = Record()
-			_read_id(record, line)
-			_sequence_lines = []
-		elif key == "AC":
-			accessions = [word for word in value.rstrip(";").split("; ")]
-			record.accessions.extend(accessions)
-		elif key == "DT":
-			_read_dt(record, line)
-		elif key == "DE":
-			record.description.append(value.strip())
-		elif key == "GN":
-			if record.gene_name:
-				record.gene_name += " "
-			record.gene_name += value
-		elif key == "OS":
-			record.organism.append(value)
-		elif key == "OG":
-			record.organelle += line[5:]
-		elif key == "OC":
-			cols = [col for col in value.rstrip(";.").split("; ")]
-			record.organism_classification.extend(cols)
-		elif key == "OX":
-			_read_ox(record, line)
-		elif key == "OH":
-			_read_oh(record, line)
-		elif key == "RN":
-			reference = Reference()
-			_read_rn(reference, value)
-			record.references.append(reference)
-		elif key == "RP":
-			assert record.references, "RP: missing RN"
-			record.references[-1].positions.append(value)
-		elif key == "RC":
-			assert record.references, "RC: missing RN"
-			reference = record.references[-1]
-			unread = _read_rc(reference, value)
-		elif key == "RX":
-			assert record.references, "RX: missing RN"
-			reference = record.references[-1]
-			_read_rx(reference, value)
-		elif key == "RL":
-			assert record.references, "RL: missing RN"
-			reference = record.references[-1]
-			reference.location.append(value)
-		# In UniProt release 1.12 of 6/21/04, there is a new RG
-		# (Reference Group) line, which references a group instead of
-		# an author.  Each block must have at least 1 RA or RG line.
-		elif key == "RA":
-			assert record.references, "RA: missing RN"
-			reference = record.references[-1]
-			reference.authors.append(value)
-		elif key == "RG":
-			assert record.references, "RG: missing RN"
-			reference = record.references[-1]
-			reference.authors.append(value)
-		elif key == "RT":
-			assert record.references, "RT: missing RN"
-			reference = record.references[-1]
-			reference.title.append(value)
-		elif key == "CC":
-			_read_cc(record, line)
-		elif key == "DR":
-			_read_dr(record, value)
-		elif key == "PE":
-			_read_pe(record, value)
-		elif key == "KW":
-			_read_kw(record, value)
-		elif key == "FT":
-			_read_ft(record, line)
-		elif key == "SQ":
-			cols = value.split()
-			assert len(cols) == 7, "I don't understand SQ line %s" % line
-			# Do more checking here?
-			record.seqinfo = int(cols[1]), int(cols[3]), cols[5]
-		elif key == "  ":
-			_sequence_lines.append(value.replace(" ", "").rstrip())
-		elif key == "//":
-			# Join multiline data into one string
-			record.description = " ".join(record.description)
-			record.organism = " ".join(record.organism)
-			record.organelle = record.organelle.rstrip()
-			for reference in record.references:
-				reference.authors = " ".join(reference.authors).rstrip(";")
-				reference.title = " ".join(reference.title).rstrip(";")
-				if reference.title.startswith('"') and reference.title.endswith('"'):
-					reference.title = reference.title[1:-1]  # remove quotes
-				reference.location = " ".join(reference.location)
-			record.sequence = "".join(_sequence_lines)
-			return record
-		else:
-			raise ValueError("Unknown keyword '%s' found" % key)
-	if record:
-		raise ValueError("Unexpected end of stream.")
+    record = None
+    unread = ""
+    for line in handle:
+        # This is for Python 3 to cope with a binary handle (byte strings),
+        # or a text handle (unicode strings):
+        # line = _as_string(line)
+        line = str(line)
+        key, value = line[:2], line[5:].rstrip()
+        if unread:
+            value = unread + " " + value
+            unread = ""
+        if key == "**":
+            # See Bug 2353, some files from the EBI have extra lines
+            # starting "**" (two asterisks/stars).  They appear
+            # to be unofficial automated annotations. e.g.
+            # **
+            # **   #################    INTERNAL SECTION    ##################
+            # **HA SAM; Annotated by PicoHamap 1.88; MF_01138.1; 09-NOV-2003.
+            pass
+        elif key == "ID":
+            record = Record()
+            _read_id(record, line)
+            _sequence_lines = []
+        elif key == "AC":
+            accessions = [word for word in value.rstrip(";").split("; ")]
+            record.accessions.extend(accessions)
+        elif key == "DT":
+            _read_dt(record, line)
+        elif key == "DE":
+            record.description.append(value.strip())
+        elif key == "GN":
+            if record.gene_name:
+                record.gene_name += " "
+            record.gene_name += value
+        elif key == "OS":
+            record.organism.append(value)
+        elif key == "OG":
+            record.organelle += line[5:]
+        elif key == "OC":
+            cols = [col for col in value.rstrip(";.").split("; ")]
+            record.organism_classification.extend(cols)
+        elif key == "OX":
+            _read_ox(record, line)
+        elif key == "OH":
+            _read_oh(record, line)
+        elif key == "RN":
+            reference = Reference()
+            _read_rn(reference, value)
+            record.references.append(reference)
+        elif key == "RP":
+            assert record.references, "RP: missing RN"
+            record.references[-1].positions.append(value)
+        elif key == "RC":
+            assert record.references, "RC: missing RN"
+            reference = record.references[-1]
+            unread = _read_rc(reference, value)
+        elif key == "RX":
+            assert record.references, "RX: missing RN"
+            reference = record.references[-1]
+            _read_rx(reference, value)
+        elif key == "RL":
+            assert record.references, "RL: missing RN"
+            reference = record.references[-1]
+            reference.location.append(value)
+        # In UniProt release 1.12 of 6/21/04, there is a new RG
+        # (Reference Group) line, which references a group instead of
+        # an author.  Each block must have at least 1 RA or RG line.
+        elif key == "RA":
+            assert record.references, "RA: missing RN"
+            reference = record.references[-1]
+            reference.authors.append(value)
+        elif key == "RG":
+            assert record.references, "RG: missing RN"
+            reference = record.references[-1]
+            reference.authors.append(value)
+        elif key == "RT":
+            assert record.references, "RT: missing RN"
+            reference = record.references[-1]
+            reference.title.append(value)
+        elif key == "CC":
+            _read_cc(record, line)
+        elif key == "DR":
+            _read_dr(record, value)
+        elif key == "PE":
+            _read_pe(record, value)
+        elif key == "KW":
+            _read_kw(record, value)
+        elif key == "FT":
+            _read_ft(record, line)
+        elif key == "SQ":
+            cols = value.split()
+            assert len(cols) == 7, "I don't understand SQ line %s" % line
+            # Do more checking here?
+            record.seqinfo = int(cols[1]), int(cols[3]), cols[5]
+        elif key == "  ":
+            _sequence_lines.append(value.replace(" ", "").rstrip())
+        elif key == "//":
+            # Join multiline data into one string
+            record.description = " ".join(record.description)
+            record.organism = " ".join(record.organism)
+            record.organelle = record.organelle.rstrip()
+            for reference in record.references:
+                reference.authors = " ".join(reference.authors).rstrip(";")
+                reference.title = " ".join(reference.title).rstrip(";")
+                if reference.title.startswith('"') and reference.title.endswith('"'):
+                    reference.title = reference.title[1:-1]  # remove quotes
+                reference.location = " ".join(reference.location)
+            record.sequence = "".join(_sequence_lines)
+            return record
+        else:
+            raise ValueError("Unknown keyword '%s' found" % key)
+    if record:
+        raise ValueError("Unexpected end of stream.")
 
 
 def _read_id(record, line):
-	cols = line[5:].split()
-	# Prior to release 51, included with MoleculeType:
-	# ID   EntryName DataClass; MoleculeType; SequenceLength AA.
-	#
-	# Newer files lack the MoleculeType:
-	# ID   EntryName DataClass; SequenceLength AA.
-	if len(cols) == 5:
-		record.entry_name = cols[0]
-		record.data_class = cols[1].rstrip(";")
-		record.molecule_type = cols[2].rstrip(";")
-		record.sequence_length = int(cols[3])
-	elif len(cols) == 4:
-		record.entry_name = cols[0]
-		record.data_class = cols[1].rstrip(";")
-		record.molecule_type = None
-		record.sequence_length = int(cols[2])
-	else:
-		raise ValueError("ID line has unrecognised format:\n" + line)
-	# check if the data class is one of the allowed values
-	allowed = ("STANDARD", "PRELIMINARY", "IPI", "Reviewed", "Unreviewed")
-	if record.data_class not in allowed:
-		raise ValueError(
-			"Unrecognized data class %s in line\n%s" % (record.data_class, line)
-		)
-	# molecule_type should be 'PRT' for PRoTein
-	# Note that has been removed in recent releases (set to None)
-	if record.molecule_type not in (None, "PRT"):
-		raise ValueError(
-			"Unrecognized molecule type %s in line\n%s" % (record.molecule_type, line)
-		)
+    cols = line[5:].split()
+    # Prior to release 51, included with MoleculeType:
+    # ID   EntryName DataClass; MoleculeType; SequenceLength AA.
+    #
+    # Newer files lack the MoleculeType:
+    # ID   EntryName DataClass; SequenceLength AA.
+    if len(cols) == 5:
+        record.entry_name = cols[0]
+        record.data_class = cols[1].rstrip(";")
+        record.molecule_type = cols[2].rstrip(";")
+        record.sequence_length = int(cols[3])
+    elif len(cols) == 4:
+        record.entry_name = cols[0]
+        record.data_class = cols[1].rstrip(";")
+        record.molecule_type = None
+        record.sequence_length = int(cols[2])
+    else:
+        raise ValueError("ID line has unrecognised format:\n" + line)
+    # check if the data class is one of the allowed values
+    allowed = ("STANDARD", "PRELIMINARY", "IPI", "Reviewed", "Unreviewed")
+    if record.data_class not in allowed:
+        raise ValueError(
+            "Unrecognized data class %s in line\n%s" % (record.data_class, line)
+        )
+    # molecule_type should be 'PRT' for PRoTein
+    # Note that has been removed in recent releases (set to None)
+    if record.molecule_type not in (None, "PRT"):
+        raise ValueError(
+            "Unrecognized molecule type %s in line\n%s" % (record.molecule_type, line)
+        )
 
 
 def _read_dt(record, line):
-	value = line[5:]
-	uprline = value.upper()
-	cols = value.rstrip().split()
-	if (
-			"CREATED" in uprline
-			or "LAST SEQUENCE UPDATE" in uprline
-			or "LAST ANNOTATION UPDATE" in uprline
-	):
-		# Old style DT line
-		# =================
-		# e.g.
-		# DT   01-FEB-1995 (Rel. 31, Created)
-		# DT   01-FEB-1995 (Rel. 31, Last sequence update)
-		# DT   01-OCT-2000 (Rel. 40, Last annotation update)
-		#
-		# or:
-		# DT   08-JAN-2002 (IPI Human rel. 2.3, Created)
-		# ...
+    value = line[5:]
+    uprline = value.upper()
+    cols = value.rstrip().split()
+    if (
+        "CREATED" in uprline
+        or "LAST SEQUENCE UPDATE" in uprline
+        or "LAST ANNOTATION UPDATE" in uprline
+    ):
+        # Old style DT line
+        # =================
+        # e.g.
+        # DT   01-FEB-1995 (Rel. 31, Created)
+        # DT   01-FEB-1995 (Rel. 31, Last sequence update)
+        # DT   01-OCT-2000 (Rel. 40, Last annotation update)
+        #
+        # or:
+        # DT   08-JAN-2002 (IPI Human rel. 2.3, Created)
+        # ...
 
-		# find where the version information will be located
-		# This is needed for when you have cases like IPI where
-		# the release version is in a different spot:
-		# DT   08-JAN-2002 (IPI Human rel. 2.3, Created)
-		uprcols = uprline.split()
-		rel_index = -1
-		for index in range(len(uprcols)):
-			if "REL." in uprcols[index]:
-				rel_index = index
-		assert rel_index >= 0, "Could not find Rel. in DT line: %s" % line
-		version_index = rel_index + 1
-		# get the version information
-		str_version = cols[version_index].rstrip(",")
-		# no version number
-		if str_version == "":
-			version = 0
-		# dot versioned
-		elif "." in str_version:
-			version = str_version
-		# integer versioned
-		else:
-			version = int(str_version)
-		date = cols[0]
+        # find where the version information will be located
+        # This is needed for when you have cases like IPI where
+        # the release version is in a different spot:
+        # DT   08-JAN-2002 (IPI Human rel. 2.3, Created)
+        uprcols = uprline.split()
+        rel_index = -1
+        for index in range(len(uprcols)):
+            if "REL." in uprcols[index]:
+                rel_index = index
+        assert rel_index >= 0, "Could not find Rel. in DT line: %s" % line
+        version_index = rel_index + 1
+        # get the version information
+        str_version = cols[version_index].rstrip(",")
+        # no version number
+        if str_version == "":
+            version = 0
+        # dot versioned
+        elif "." in str_version:
+            version = str_version
+        # integer versioned
+        else:
+            version = int(str_version)
+        date = cols[0]
 
-		if "CREATED" in uprline:
-			record.created = date, version
-		elif "LAST SEQUENCE UPDATE" in uprline:
-			record.sequence_update = date, version
-		elif "LAST ANNOTATION UPDATE" in uprline:
-			record.annotation_update = date, version
-		else:
-			raise ValueError("Unrecognised DT (DaTe) line.")
-	elif (
-			"INTEGRATED INTO" in uprline
-			or "SEQUENCE VERSION" in uprline
-			or "ENTRY VERSION" in uprline
-	):
-		# New style DT line
-		# =================
-		# As of UniProt Knowledgebase release 7.0 (including
-		# Swiss-Prot release 49.0 and TrEMBL release 32.0) the
-		# format of the DT lines and the version information
-		# in them was changed - the release number was dropped.
-		#
-		# For more information see bug 1948 and
-		# http://ca.expasy.org/sprot/relnotes/sp_news.html#rel7.0
-		#
-		# e.g.
-		# DT   01-JAN-1998, integrated into UniProtKB/Swiss-Prot.
-		# DT   15-OCT-2001, sequence version 3.
-		# DT   01-APR-2004, entry version 14.
-		#
-		# This is a new style DT line...
+        if "CREATED" in uprline:
+            record.created = date, version
+        elif "LAST SEQUENCE UPDATE" in uprline:
+            record.sequence_update = date, version
+        elif "LAST ANNOTATION UPDATE" in uprline:
+            record.annotation_update = date, version
+        else:
+            raise ValueError("Unrecognised DT (DaTe) line.")
+    elif (
+        "INTEGRATED INTO" in uprline
+        or "SEQUENCE VERSION" in uprline
+        or "ENTRY VERSION" in uprline
+    ):
+        # New style DT line
+        # =================
+        # As of UniProt Knowledgebase release 7.0 (including
+        # Swiss-Prot release 49.0 and TrEMBL release 32.0) the
+        # format of the DT lines and the version information
+        # in them was changed - the release number was dropped.
+        #
+        # For more information see bug 1948 and
+        # http://ca.expasy.org/sprot/relnotes/sp_news.html#rel7.0
+        #
+        # e.g.
+        # DT   01-JAN-1998, integrated into UniProtKB/Swiss-Prot.
+        # DT   15-OCT-2001, sequence version 3.
+        # DT   01-APR-2004, entry version 14.
+        #
+        # This is a new style DT line...
 
-		# The date should be in string cols[1]
-		# Get the version number if there is one.
-		# For the three DT lines above: 0, 3, 14
-		try:
-			version = 0
-			for s in cols[-1].split("."):
-				if s.isdigit():
-					version = int(s)
-		except ValueError:
-			version = 0
-		date = cols[0].rstrip(",")
+        # The date should be in string cols[1]
+        # Get the version number if there is one.
+        # For the three DT lines above: 0, 3, 14
+        try:
+            version = 0
+            for s in cols[-1].split("."):
+                if s.isdigit():
+                    version = int(s)
+        except ValueError:
+            version = 0
+        date = cols[0].rstrip(",")
 
-		# Re-use the historical property names, even though
-		# the meaning has changed slighty:
-		if "INTEGRATED" in uprline:
-			record.created = date, version
-		elif "SEQUENCE VERSION" in uprline:
-			record.sequence_update = date, version
-		elif "ENTRY VERSION" in uprline:
-			record.annotation_update = date, version
-		else:
-			raise ValueError("Unrecognised DT (DaTe) line.")
-	else:
-		raise ValueError("I don't understand the date line %s" % line)
+        # Re-use the historical property names, even though
+        # the meaning has changed slighty:
+        if "INTEGRATED" in uprline:
+            record.created = date, version
+        elif "SEQUENCE VERSION" in uprline:
+            record.sequence_update = date, version
+        elif "ENTRY VERSION" in uprline:
+            record.annotation_update = date, version
+        else:
+            raise ValueError("Unrecognised DT (DaTe) line.")
+    else:
+        raise ValueError("I don't understand the date line %s" % line)
 
 
 def _read_ox(record, line):
-	# The OX line used to be in the simple format:
-	# OX   DESCRIPTION=ID[, ID]...;
-	# If there are too many id's to fit onto a line, then the ID's
-	# continue directly onto the next line, e.g.
-	# OX   DESCRIPTION=ID[, ID]...
-	# OX   ID[, ID]...;
-	# Currently, the description is always "NCBI_TaxID".
-	# To parse this, I need to check to see whether I'm at the
-	# first line.  If I am, grab the description and make sure
-	# it's an NCBI ID.  Then, grab all the id's.
-	#
-	# As of the 2014-10-01 release, there may be an evidence code, e.g.
-	# OX   NCBI_TaxID=418404 {ECO:0000313|EMBL:AEX14553.1};
-	# In the short term, we will ignore any evidence codes:
-	line = line.split("{")[0]
-	if record.taxonomy_id:
-		ids = line[5:].rstrip().rstrip(";")
-	else:
-		descr, ids = line[5:].rstrip().rstrip(";").split("=")
-		assert descr == "NCBI_TaxID", "Unexpected taxonomy type %s" % descr
-	record.taxonomy_id.extend(ids.split(", "))
+    # The OX line used to be in the simple format:
+    # OX   DESCRIPTION=ID[, ID]...;
+    # If there are too many id's to fit onto a line, then the ID's
+    # continue directly onto the next line, e.g.
+    # OX   DESCRIPTION=ID[, ID]...
+    # OX   ID[, ID]...;
+    # Currently, the description is always "NCBI_TaxID".
+    # To parse this, I need to check to see whether I'm at the
+    # first line.  If I am, grab the description and make sure
+    # it's an NCBI ID.  Then, grab all the id's.
+    #
+    # As of the 2014-10-01 release, there may be an evidence code, e.g.
+    # OX   NCBI_TaxID=418404 {ECO:0000313|EMBL:AEX14553.1};
+    # In the short term, we will ignore any evidence codes:
+    line = line.split("{")[0]
+    if record.taxonomy_id:
+        ids = line[5:].rstrip().rstrip(";")
+    else:
+        descr, ids = line[5:].rstrip().rstrip(";").split("=")
+        assert descr == "NCBI_TaxID", "Unexpected taxonomy type %s" % descr
+    record.taxonomy_id.extend(ids.split(", "))
 
 
 def _read_oh(record, line):
-	# Line type OH (Organism Host) for viral hosts
-	assert line[5:].startswith("NCBI_TaxID="), "Unexpected %s" % line
-	line = line[16:].rstrip()
-	assert line[-1] == "." and line.count(";") == 1, line
-	taxid, name = line[:-1].split(";")
-	record.host_taxonomy_id.append(taxid.strip())
-	record.host_organism.append(name.strip())
+    # Line type OH (Organism Host) for viral hosts
+    assert line[5:].startswith("NCBI_TaxID="), "Unexpected %s" % line
+    line = line[16:].rstrip()
+    assert line[-1] == "." and line.count(";") == 1, line
+    taxid, name = line[:-1].split(";")
+    record.host_taxonomy_id.append(taxid.strip())
+    record.host_organism.append(name.strip())
 
 
 def _read_rn(reference, rn):
-	# This used to be a very simple line with a reference number, e.g.
-	# RN   [1]
-	# As of the 2014-10-01 release, there may be an evidence code, e.g.
-	# RN   [1] {ECO:0000313|EMBL:AEX14553.1}
-	words = rn.split(None, 1)
-	number = words[0]
-	assert number.startswith("[") and number.endswith("]"), (
-			"Missing brackets %s" % number
-	)
-	reference.number = int(number[1:-1])
-	if len(words) > 1:
-		evidence = words[1]
-		assert evidence.startswith("{") and evidence.endswith("}"), (
-				"Missing braces %s" % evidence
-		)
-		reference.evidence = evidence[1:-1].split("|")
+    # This used to be a very simple line with a reference number, e.g.
+    # RN   [1]
+    # As of the 2014-10-01 release, there may be an evidence code, e.g.
+    # RN   [1] {ECO:0000313|EMBL:AEX14553.1}
+    words = rn.split(None, 1)
+    number = words[0]
+    assert number.startswith("[") and number.endswith("]"), (
+        "Missing brackets %s" % number
+    )
+    reference.number = int(number[1:-1])
+    if len(words) > 1:
+        evidence = words[1]
+        assert evidence.startswith("{") and evidence.endswith("}"), (
+            "Missing braces %s" % evidence
+        )
+        reference.evidence = evidence[1:-1].split("|")
 
 
 def _read_rc(reference, value):
-	cols = value.split(";")
-	if value[-1] == ";":
-		unread = ""
-	else:
-		cols, unread = cols[:-1], cols[-1]
-	for col in cols:
-		if not col:  # last column will be the empty string
-			return
-		# The token is everything before the first '=' character.
-		i = col.find("=")
-		if i >= 0:
-			token, text = col[:i], col[i + 1:]
-			comment = token.lstrip(), text
-			reference.comments.append(comment)
-		else:
-			comment = reference.comments[-1]
-			comment = "%s %s" % (comment, col)
-			reference.comments[-1] = comment
-	return unread
+    cols = value.split(";")
+    if value[-1] == ";":
+        unread = ""
+    else:
+        cols, unread = cols[:-1], cols[-1]
+    for col in cols:
+        if not col:  # last column will be the empty string
+            return
+        # The token is everything before the first '=' character.
+        i = col.find("=")
+        if i >= 0:
+            token, text = col[:i], col[i + 1 :]
+            comment = token.lstrip(), text
+            reference.comments.append(comment)
+        else:
+            comment = reference.comments[-1]
+            comment = "%s %s" % (comment, col)
+            reference.comments[-1] = comment
+    return unread
 
 
 def _read_rx(reference, value):
-	# The basic (older?) RX line is of the form:
-	# RX   MEDLINE; 85132727.
-	# but there are variants of this that need to be dealt with (see below)
+    # The basic (older?) RX line is of the form:
+    # RX   MEDLINE; 85132727.
+    # but there are variants of this that need to be dealt with (see below)
 
-	# CLD1_HUMAN in Release 39 and DADR_DIDMA in Release 33
-	# have extraneous information in the RX line.  Check for
-	# this and chop it out of the line.
-	# (noticed by katel@worldpath.net)
-	value = value.replace(" [NCBI, ExPASy, Israel, Japan]", "")
+    # CLD1_HUMAN in Release 39 and DADR_DIDMA in Release 33
+    # have extraneous information in the RX line.  Check for
+    # this and chop it out of the line.
+    # (noticed by katel@worldpath.net)
+    value = value.replace(" [NCBI, ExPASy, Israel, Japan]", "")
 
-	# RX lines can also be used of the form
-	# RX   PubMed=9603189;
-	# reported by edvard@farmasi.uit.no
-	# and these can be more complicated like:
-	# RX   MEDLINE=95385798; PubMed=7656980;
-	# RX   PubMed=15060122; DOI=10.1136/jmg 2003.012781;
-	# We look for these cases first and deal with them
-	warn = False
-	if "=" in value:
-		cols = value.split("; ")
-		cols = [x.strip() for x in cols]
-		cols = [x for x in cols if x]
-		for col in cols:
-			x = col.split("=")
-			if len(x) != 2 or x == ("DOI", "DOI"):
-				warn = True
-				break
-			assert len(x) == 2, "I don't understand RX line %s" % value
-			reference.references.append((x[0], x[1].rstrip(";")))
-	# otherwise we assume we have the type 'RX   MEDLINE; 85132727.'
-	else:
-		cols = value.split("; ")
-		# normally we split into the three parts
-		if len(cols) != 2:
-			warn = True
-		else:
-			reference.references.append((cols[0].rstrip(";"), cols[1].rstrip(".")))
-	if warn:
-		import warnings
-		from Bio import BiopythonParserWarning
+    # RX lines can also be used of the form
+    # RX   PubMed=9603189;
+    # reported by edvard@farmasi.uit.no
+    # and these can be more complicated like:
+    # RX   MEDLINE=95385798; PubMed=7656980;
+    # RX   PubMed=15060122; DOI=10.1136/jmg 2003.012781;
+    # We look for these cases first and deal with them
+    warn = False
+    if "=" in value:
+        cols = value.split("; ")
+        cols = [x.strip() for x in cols]
+        cols = [x for x in cols if x]
+        for col in cols:
+            x = col.split("=")
+            if len(x) != 2 or x == ("DOI", "DOI"):
+                warn = True
+                break
+            assert len(x) == 2, "I don't understand RX line %s" % value
+            reference.references.append((x[0], x[1].rstrip(";")))
+    # otherwise we assume we have the type 'RX   MEDLINE; 85132727.'
+    else:
+        cols = value.split("; ")
+        # normally we split into the three parts
+        if len(cols) != 2:
+            warn = True
+        else:
+            reference.references.append((cols[0].rstrip(";"), cols[1].rstrip(".")))
+    if warn:
+        import warnings
+        from Bio import BiopythonParserWarning
 
-		warnings.warn("Possibly corrupt RX line %r" % value, BiopythonParserWarning)
+        warnings.warn("Possibly corrupt RX line %r" % value, BiopythonParserWarning)
 
 
 def _read_cc(record, line):
-	key, value = line[5:8], line[9:].rstrip()
-	if key == "-!-":  # Make a new comment
-		record.comments.append(value)
-	elif key == "   ":  # add to the previous comment
-		if not record.comments:
-			# TCMO_STRGA in Release 37 has comment with no topic
-			record.comments.append(value)
-		else:
-			record.comments[-1] += " " + value
+    key, value = line[5:8], line[9:].rstrip()
+    if key == "-!-":  # Make a new comment
+        record.comments.append(value)
+    elif key == "   ":  # add to the previous comment
+        if not record.comments:
+            # TCMO_STRGA in Release 37 has comment with no topic
+            record.comments.append(value)
+        else:
+            record.comments[-1] += " " + value
 
 
 def _read_dr(record, value):
-	cols = value.rstrip(".").split("; ")
-	record.cross_references.append(tuple(cols))
+    cols = value.rstrip(".").split("; ")
+    record.cross_references.append(tuple(cols))
 
 
 def _read_pe(record, value):
-	pe = value.split(":")
-	record.protein_existence = int(pe[0])
+    pe = value.split(":")
+    record.protein_existence = int(pe[0])
 
 
 def _read_kw(record, value):
-	# Old style - semi-colon separated, multi-line. e.g. Q13639.txt
-	# KW   Alternative splicing; Cell membrane; Complete proteome;
-	# KW   Disulfide bond; Endosome; G-protein coupled receptor; Glycoprotein;
-	# KW   Lipoprotein; Membrane; Palmitate; Polymorphism; Receptor; Transducer;
-	# KW   Transmembrane.
-	#
-	# New style as of 2014-10-01 release with evidence codes, e.g. H2CNN8.txt
-	# KW   Monooxygenase {ECO:0000313|EMBL:AEX14553.1};
-	# KW   Oxidoreductase {ECO:0000313|EMBL:AEX14553.1}.
-	# For now to match the XML parser, drop the evidence codes.
-	for value in value.rstrip(";.").split("; "):
-		if value.endswith("}"):
-			# Discard the evidence code
-			value = value.rsplit("{", 1)[0]
-		record.keywords.append(value.strip())
+    # Old style - semi-colon separated, multi-line. e.g. Q13639.txt
+    # KW   Alternative splicing; Cell membrane; Complete proteome;
+    # KW   Disulfide bond; Endosome; G-protein coupled receptor; Glycoprotein;
+    # KW   Lipoprotein; Membrane; Palmitate; Polymorphism; Receptor; Transducer;
+    # KW   Transmembrane.
+    #
+    # New style as of 2014-10-01 release with evidence codes, e.g. H2CNN8.txt
+    # KW   Monooxygenase {ECO:0000313|EMBL:AEX14553.1};
+    # KW   Oxidoreductase {ECO:0000313|EMBL:AEX14553.1}.
+    # For now to match the XML parser, drop the evidence codes.
+    for value in value.rstrip(";.").split("; "):
+        if value.endswith("}"):
+            # Discard the evidence code
+            value = value.rsplit("{", 1)[0]
+        record.keywords.append(value.strip())
 
 
 def _read_ft(record, line):
-	line = line[5:]
-	name = line[0:10].rstrip()
-	description = ''
-	ft_id = ''
-	if name:
-		from_to = line[10:].strip().split('..')
-		try:
-			from_res = int(from_to[0])
-			if len(from_to) > 1:
-				to_res = int(from_to[1])
-			else:
-				to_res = int(from_to[0])
-		except ValueError:
-			try:
-				from_to = line[10:].strip().split(':')
-				if len(from_to) > 1:
-					from_to_2 = from_to[1].split('..')
-					if len(from_to_2) > 1:
-						from_res = int(from_to_2[0])
-						to_res = int(from_to_2[1])
-					else:
-						from_res = int(from_to[1])
-						to_res = int(from_to[1])
-				else:
-					from_res = from_to[0]
-					to_res = from_to[0]
-			except ValueError:
-				from_res = ''
-				to_res = ''
-	else:
-		name, from_res, to_res, old_desc, old_ft_id = record.features[-1]
-		del record.features[-1]
-		line = line.lstrip()
-		if line.startswith('/note'):
-			description = line.lstrip('/note="').rstrip().rstrip('"')
-		elif line.startswith('/id'):
-			ft_id = line.lstrip('/id="').rstrip().rstrip('"')
-			description = old_desc
-		elif line.startswith('/evidence'):
-			description = old_desc + ' (' + line.lstrip('/evidence="').rstrip().rstrip('"')
-		elif old_desc != '' and not line.startswith('/'):
-			if old_desc.endswith(')'):
-				old_desc = old_desc.rstrip(')') + ' '
-			description = ("%s%s" % (old_desc, line.rstrip().rstrip('"'))).strip()
-		else:
-			description = old_desc
-	if description.count('(') > description.count(')'):
-		description += ')'
-	record.features.append((name, from_res, to_res, description, ft_id))
+    line = line[5:]
+    name = line[0:10].rstrip()
+    description = ""
+    ft_id = ""
+    if name:
+        from_to = line[10:].strip().split("..")
+        try:
+            from_res = int(from_to[0])
+            if len(from_to) > 1:
+                to_res = int(from_to[1])
+            else:
+                to_res = int(from_to[0])
+        except ValueError:
+            try:
+                from_to = line[10:].strip().split(":")
+                if len(from_to) > 1:
+                    from_to_2 = from_to[1].split("..")
+                    if len(from_to_2) > 1:
+                        from_res = int(from_to_2[0])
+                        to_res = int(from_to_2[1])
+                    else:
+                        from_res = int(from_to[1])
+                        to_res = int(from_to[1])
+                else:
+                    from_res = from_to[0]
+                    to_res = from_to[0]
+            except ValueError:
+                from_res = ""
+                to_res = ""
+    else:
+        name, from_res, to_res, old_desc, old_ft_id = record.features[-1]
+        del record.features[-1]
+        line = line.lstrip()
+        if line.startswith("/note"):
+            description = line.lstrip('/note="').rstrip().rstrip('"')
+        elif line.startswith("/id"):
+            ft_id = line.lstrip('/id="').rstrip().rstrip('"')
+            description = old_desc
+        elif line.startswith("/evidence"):
+            description = (
+                old_desc + " (" + line.lstrip('/evidence="').rstrip().rstrip('"')
+            )
+        elif old_desc != "" and not line.startswith("/"):
+            if old_desc.endswith(")"):
+                old_desc = old_desc.rstrip(")") + " "
+            description = ("%s%s" % (old_desc, line.rstrip().rstrip('"'))).strip()
+        else:
+            description = old_desc
+    if description.count("(") > description.count(")"):
+        description += ")"
+    record.features.append((name, from_res, to_res, description, ft_id))
 
 
 # def _read_ft(record, line):
@@ -675,6 +677,6 @@ def _read_ft(record, line):
 
 
 if __name__ == "__main__":
-	from Bio._utils import run_doctest
+    from Bio._utils import run_doctest
 
-	run_doctest(verbose=0)
+    run_doctest(verbose=0)

@@ -791,41 +791,43 @@ CREATE INDEX tcrd_novelty_protein_id_index ON tcrd_novelty (protein_id);
 
 
 def create_db():
-	path_exist = False
-	targetDB_path = Path()
-	while not path_exist:
-		targetDB_path = Path(askdirectory(title='Select where you want to save the targetDB file'))
-		if targetDB_path.is_dir():
-			path_exist = True
-		else:
-			print('[ERROR]: The directory you have entered does not exists')
+    path_exist = False
+    targetDB_path = Path()
+    while not path_exist:
+        targetDB_path = Path(
+            askdirectory(title="Select where you want to save the targetDB file")
+        )
+        if targetDB_path.is_dir():
+            path_exist = True
+        else:
+            print("[ERROR]: The directory you have entered does not exists")
 
-	db_name = 'TargetDB_'+time.strftime("%d_%m_%y")+'.db'
+    db_name = "TargetDB_" + time.strftime("%d_%m_%y") + ".db"
 
-	db_file_path = targetDB_path.joinpath(db_name)
+    db_file_path = targetDB_path.joinpath(db_name)
 
-	print('[DATABASE]: Creating targetDB database table structure')
-	connector = sqlite3.connect(str(db_file_path))
-	cursor = connector.cursor()
-	cursor.executescript(creation_sql)
-	connector.commit()
-	print('[DATABASE]: targetDB empty database created')
-	print('[FILE CREATED]: ',db_file_path)
+    print("[DATABASE]: Creating targetDB database table structure")
+    connector = sqlite3.connect(str(db_file_path))
+    cursor = connector.cursor()
+    cursor.executescript(creation_sql)
+    connector.commit()
+    print("[DATABASE]: targetDB empty database created")
+    print("[FILE CREATED]: ", db_file_path)
 
-	pck_path = Path(str(pkg_resources.resource_filename('utils', ''))).parent
-	data_pck_path = pck_path.joinpath('data')
-	fill_db(data_pck_path,connector)
-	print('[DATABASE]: targetDB table pre-filling completed')
+    pck_path = Path(str(pkg_resources.resource_filename("utils", ""))).parent
+    data_pck_path = pck_path.joinpath("data")
+    fill_db(data_pck_path, connector)
+    print("[DATABASE]: targetDB table pre-filling completed")
 
-	connector.close()
-	return db_file_path
+    connector.close()
+    return db_file_path
 
 
-def fill_db(path_to_datafiles,connector):
-	for f in path_to_datafiles.iterdir():
-		if not Path(str(f)).is_dir():
-			#df = pd.read_json(str(f))
-			df = pd.read_csv(str(f))
-			table_name = '_'.join(f.name.split('_')[:-3])
-			print('[DATABASE]: Filling the table ',table_name)
-			df.to_sql(table_name, con=connector, if_exists='append', index=False)
+def fill_db(path_to_datafiles, connector):
+    for f in path_to_datafiles.iterdir():
+        if not Path(str(f)).is_dir():
+            # df = pd.read_json(str(f))
+            df = pd.read_csv(str(f))
+            table_name = "_".join(f.name.split("_")[:-3])
+            print("[DATABASE]: Filling the table ", table_name)
+            df.to_sql(table_name, con=connector, if_exists="append", index=False)
